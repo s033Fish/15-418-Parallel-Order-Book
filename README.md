@@ -1,5 +1,9 @@
 # Parallel Order Book Matching Engine
 
+**Kevin Tang - kktang**, **Spencer Fisher - smfisher**
+
+Project Site: [Parallel-Order-Book](https://github.com/s033Fish/15-418-Parallel-Order-Book)
+
 ## Summary:
 
 Our goal is to build a sequential order book matching engine in C++ to increase performance by incorporating parallelism on multicore CPUs. Beyond the obvious split of parallelizing by stock, we will parallelize orders within a specific stock while producing trades identical to a sequential matching engine. We will evaluate the performance of our engine with realistic order submission data from NASDAQ ITCH’s data, which is a live historical data set with real trades from the exchange.
