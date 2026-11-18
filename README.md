@@ -60,3 +60,32 @@ Week 3: Complete initial within-stock parallel implementation
 Week 4: Optimize within-stock parallel implementation for memory layout, contention, etc. to achieve maximum performance
 
 Week 5: Gather performance comparison data on GHC and PSC and complete the final project report
+
+## Build and Test
+
+```
+cmake -S . -B build && cmake --build build -j
+./build/test_itch_parser
+./build/test_engine
+```
+
+## Downloading, Parsing, and Matching ITCH Data
+
+```
+# Download:
+mkdir -p /tmp/$USER && chmod 700 /tmp/$USER
+cd /tmp/$USER
+wget "https://emi.nasdaq.com/ITCH/Nasdaq%20ITCH/01302019.NASDAQ_ITCH50.gz"
+
+
+# Parse:
+# For a few stocks:
+./build/itch_parse /tmp/$USER/01302019.NASDAQ_ITCH50.gz /tmp/$USER/small.bin AAPL MSFT AMD
+
+# For every stock:
+./build/itch_parse /tmp/$USER/01302019.NASDAQ_ITCH50.gz /tmp/$USER/full.bin
+
+# Run the Engine:
+./build/run_engine /tmp/$USER/small.bin pro-rata trades_pr.bin
+./build/run_engine /tmp/$USER/small.bin price-time trades_pt.bin
+```
