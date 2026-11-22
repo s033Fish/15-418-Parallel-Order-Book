@@ -89,3 +89,65 @@ wget "https://emi.nasdaq.com/ITCH/Nasdaq%20ITCH/01302019.NASDAQ_ITCH50.gz"
 ./build/run_engine /tmp/$USER/small.bin pro-rata trades_pr.bin
 ./build/run_engine /tmp/$USER/small.bin price-time trades_pt.bin
 ```
+
+## Correctness & Benchmarking (Parallel vs. Sequential)
+
+`tests/checker/` holds the harness that checks every engine against the sequential reference and benchmarks it.
+
+| File | Purpose |
+|---|---|
+| `engine_api.hpp` | `MatchingEngine` interface every engine variant is wrapped in |
+| `engines.hpp` | Adapters + registry (`seq` today; add parallel engines here) |
+| `compare.hpp` | Per-stock, field-by-field trade comparison and final-book comparison |
+| `bench.hpp` | Timing harness (warmup, reps, min/median/mean/stddev) |
+| `event_gen.hpp` | Seeded random event streams (Zipf-skewed stocks, hot top-of-book) |
+| `check_engine.cpp` | CLI: correctness checks + benchmark table / CSV |
+| `test_checker.cpp` | Self-test proving the checker catches corrupted output |
+
+**Correctness rule:** trades of different stocks may come out in any order, but each stock's trades must match the sequential engine exactly, in order, and every stock's final book must match.
+
+```
+# All tests (unit tests, checker self-test, random-stream smoke check)
+cd build && ctest --output-on-failure
+
+# Random stream: check + benchmark all engines over thread counts
+./build/check_engine --random 2000000 --stocks 100 --rule both --threads 1,2,4,8 --reps 5
+
+# Real ITCH data, results to CSV for plots
+./build/check_engine --events /tmp/$USER/small.bin --rule both --csv results.csv
+
+# Hunt for races: correctness only, many repetitions
+./build/check_engine --random 500000 --stocks 3 --check-reps 50 --no-bench
+```
+
+Options: `--engines a,b` (default: all registered), `--threads` (default: 1,2,4,... up to hardware threads), `--warmup`, `--reps`, `--check-reps`, `--seed`, `--no-bench`. Only `run()` is timed, on a fresh engine each repetition; speedup = sequential median / candidate median, efficiency = speedup / threads.
+
+**Adding a parallel engine:** implement it in its own header, write an adapter subclass of `ob::check::MatchingEngine` in `tests/checker/engines.hpp` (see `SequentialAdapter`), and add one line to `registry()`.
+
+
+## Across-Stock Parallel Engine (Week 2)
+
+`parallel/across-stock-engine.hpp` replays each stock's events on exactly one thread. Books of different stocks share no state, so no locks are needed and each stock's trades come out in the same order as the sequential engine. Each `run()`:
+1. partitions the events by stock (sequential counting sort, keeps arrival order),
+2. assigns stocks to threads by the chosen `Schedule`,
+3. matches in parallel into per-thread trade vectors,
+4. concatenates the vectors (sequential merge).
+
+| Schedule | Checker name | Assignment |
+|---|---|---|
+| `STATIC` | `stock-static` | k-th active stock → thread k % T, ignoring load |
+| `DYNAMIC` | `stock-dynamic` | threads take the next stock from a shared atomic counter |
+| `SEMI_STATIC` | `stock-semi` | stream cut into epochs (2^18 events); each epoch, heaviest stock first onto the least-loaded thread, using the previous epoch's event counts as the cost estimate |
+
+```
+./build/check_engine --random 4000000 --stocks 100 --rule both --threads 1,2,4,8 --csv week2.csv
+./build/check_engine --events /tmp/$USER/full.bin --engines stock-static,stock-dynamic,stock-semi --rule both
+```
+
+Known simplifications in this first iteration (room for improvement):
+- Partition and merge are sequential.
+- Threads are spawned per run, and per epoch for semi-static (no thread pool).
+- `OrderBook`s sit next to each other in one vector (possible false sharing).
+- Dynamic hands out one stock at a time in id order (no heaviest-first ordering).
+- Event count is a crude cost estimate (pro-rata cost depends on level depth).
+- The busiest stock caps speedup at about 1 / (its share of events).
