@@ -92,12 +92,10 @@ wget "https://emi.nasdaq.com/ITCH/Nasdaq%20ITCH/01302019.NASDAQ_ITCH50.gz"
 
 ## Correctness & Benchmarking
 
-`tests/checker/` holds the harness that checks every engine against the sequential reference and benchmarks it.
-
 **Correctness rule:** trades of different stocks may come out in any order, but each stock's trades must match the sequential engine exactly, in order, and every stock's final book must match.
 
 ```
-# All tests (unit tests, checker self-test, random-stream smoke check)
+# All tests
 cd build && ctest --output-on-failure
 
 # Random stream: check + benchmark all engines over thread counts
@@ -110,15 +108,15 @@ cd build && ctest --output-on-failure
 ./build/check_engine --random 500000 --stocks 3 --check-reps 50 --no-bench
 ```
 
-Options: `--engines a,b` (default: all registered), `--threads` (default: 1,2,4,... up to hardware threads), `--warmup`, `--reps`, `--check-reps`, `--seed`, `--no-bench`. Only `run()` is timed, on a fresh engine each repetition; speedup = sequential median / candidate median, efficiency = speedup / threads.
+Options: `--engines a,b`, `--threads` , `--warmup`, `--reps`, `--check-reps`, `--seed`, `--no-bench`
 
 ## Across-Stock Parallel Engine (Week 2)
 
 Replays each stock's events on exactly one thread. Books of different stocks share no state, so no locks are needed and each stock's trades come out in the same order as the sequential engine. Each `run()`:
-1. partitions the events by stock (sequential counting sort, keeps arrival order)
+1. partitions the events by stock
 2. assigns stocks to threads by the chosen `Schedule`
 3. matches in parallel into per-thread trade vectors
-4. concatenates the vectors (sequential merge)
+4. concatenates the vectors
 
 Testing 3 workload-assignment strategies:
 1. Static - evenly splitting stocks across threads
@@ -136,4 +134,4 @@ Area for improvement:
 - `OrderBook`s sit next to each other in one vector
 - Dynamic hands out one stock at a time in id order
 - Event count is a crude cost estimate
-- The busiest stock caps speedup at about 1 / (its share of events).
+- The busiest stock caps speedup at about 1 / (its share of events)
