@@ -135,3 +135,24 @@ Area for improvement:
 - Dynamic hands out one stock at a time in id order
 - Event count is a crude cost estimate
 - The busiest stock caps speedup at about 1 / (its share of events)
+
+
+## Milestone Report
+
+Our project is currently on schedule. We have completed our goals for weeks 1 and 2 of our project. We currently have a full day of real Nasdaq order flow data running through a sequential engine and three across-stock parallel engines. 
+
+We created a streaming parser that reads a NASDAQ TotalView-ITCH 5.0 file and converts it into a binary of events. Since ITCH publishes resting orders and the executions against them, but doesn’t publish incoming orders, the parser keeps a copy of NASDAQ’s live orders and rebuilds the incoming aggressive orders.
+
+We have also created a sequential engine that supports both price-time and pro-rata matching. The engine also fully supports cancel and delete orders. The engine is deterministic and is used as a correctness benchmark for our parallel versions.
+
+As such, we created a correctness checker and benchmark harness. Any engine variant can be checked against the sequential reference. Trades are compared field by field, per stock and in order. Our benchmark harness also tests the performance of each of our sequential engines to compare the speed of every iteration of our engines.
+
+Finally, we have also created an across-stock parallel engine where the matching engine is parallelized across each stock. We have also tested static, dynamic, and semi-static schedulers.
+
+Given our progress, our goals remain unchanged, and we have the same “hope” goals as before starting our project.
+
+For the poster session, we hope to have some sort of demonstration of our matching engine’s performance. At a minimum, we can have a terminal demonstration to illustrate the speed and scale of our engine. If we have time, we would like to have a small web page to add a more visual aspect to the order-book replay.
+
+Our preliminary results have found that the across-stock engine is 5.2x faster than the sequential engine at 8 threads. 
+
+Our biggest remaining concern is the within-stock parallelism, as it is the major open design. We are still unaware of how much parallelism we can allow while still maintaining correctness.
