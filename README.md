@@ -92,7 +92,7 @@ wget "https://emi.nasdaq.com/ITCH/Nasdaq%20ITCH/01302019.NASDAQ_ITCH50.gz"
 
 ## Correctness & Benchmarking
 
-**Correctness rule:** trades of different stocks may come out in any order, but each stock's trades must match the sequential engine exactly, in order, and every stock's final book must match.
+How we define correctness: trades of different stocks may come out in any order, but each stock's trades must match the sequential engine exactly, in order, and every stock's final book must match.
 
 ```
 # All tests
@@ -110,7 +110,7 @@ cd build && ctest --output-on-failure
 
 Options: `--engines a,b`, `--threads` , `--warmup`, `--reps`, `--check-reps`, `--seed`, `--no-bench`
 
-## Across-Stock Parallel Engine (Week 2)
+## Across-Stock Parallel Engine
 
 Replays each stock's events on exactly one thread. Books of different stocks share no state, so no locks are needed and each stock's trades come out in the same order as the sequential engine. Each `run()`:
 1. partitions the events by stock
